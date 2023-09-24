@@ -1,6 +1,16 @@
 # Object Spawn System
 This is a VRChat U# gimmick for spawning and returning (destroying) objects. Compatible with VCC/U# 1.0 and later versions. It can be used to freely retrieve and clean up bulky pickup food and drinks in restaurant-themed worlds.
 
+When applied, it will behave as follows:
+
+* Interacting with the Spawn Switch will cause any hidden objects to appear.
+* Overlaying spawned objects on the Return Trigger will make any object return to its hidden state and initial position.
+* Interacting with the Reset Switch will trigger a bulk return of any spawned objects.
+
+Please note that objects added to the `VRCObjectPool` will be hidden by default.
+
+We have included a sample scene, so please start by building and testing it to confirm its functionality.
+
 This is a culmination of the author's knowledge gained while using it in restaurant-themed events as an event organizer or world creator.
 
 ## How to Use
