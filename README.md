@@ -1,6 +1,6 @@
 # Object Spawn System
-VRChat U# オブジェクトをSpawnしたりReturn(Destroy)したりするギミックです。  
-VCC/U#1.0以降向け。飲食店ワールドで嵩張るPickup飲食物を自在に取り出したり片付けたりする等、に活用できます。
+オブジェクトをSpawnしたりReturn(Destroy)したりするギミックです。  
+VCC/U#1.0以降向け。飲食店ワールドで嵩張るPickup飲食物を、自在に取り出したり片付けたりする等に活用できます。
 
 適用すると、以下の動作となります。
 * SpawnスイッチにInteractすることで、非表示状態であった任意のオブジェクトが出現する。
@@ -11,7 +11,6 @@ VCC/U#1.0以降向け。飲食店ワールドで嵩張るPickup飲食物を自�
 
 サンプルシーンを同梱しておりますので、まずはそちらをテストビルドし、動作をご確認ください。
 
-作者自身がイベント主催orワールド制作担当者として、飲食店舗系イベントで活用しながらアップデートしてきた知見の集大成となっております。
 
 ## 使い方
 
@@ -66,12 +65,9 @@ SpawnObjectでSpawnされたオブジェクトを、一括ですべてReturnさ�
 | VRC Object Pool | `VRCObjectPool` | Spawn対象とするオブジェクトが所属する `VRCObjectPool` |
 | Ramdom Spawn | bool | ランダムSpawn有無。チェックをつけた場合(True)、インスタンス作成時の一度だけ、Spawnの順序がランダムに変更される |
 | Move Item To Hand | bool | チェックをつけた場合(True)、Spawn実行時、Spawn対象オブジェクトの初期位置に関わらず、Spawnスイッチに近い方の手の位置にSpawnオブジェクトが出現する |
+| Spawn Point | Transform | 指定した場合、オブジェクトが指定の位置に出現します。ただし Move Item To Hand が優先です。 |
 | Audio Source | `AudioSource` | Spawn時に再生する音源。無指定の場合は再生しない |
 | Audio Clip | `AudioClip` | Spawn時に再生するオーディオクリップ。無指定の場合は `Audio Source` に指定された `AudioClip` を再生する |
-| Execute Custom Event | bool | 各Spawnオブジェクト、および `External Objects` にて指定されたオブジェクトの `UdonBehaviour` に対し、カスタムメソッドをグローバル実行するかどうか |
-| External Objects | `GameObject[]` | Spawnオブジェクト以外を対象として、SpawnObject実行時に実行したいカスタムメソッドが所属するオブジェクト、またはその親オブジェクト |
-
-カスタムメソッドを使いたい場合、 `Custom Event Names` にあるメソッドをコピペしてご利用ください。
 
 ### Return Object
 
@@ -82,10 +78,6 @@ SpawnObjectでSpawnされたオブジェクトを、一括ですべてReturnさ�
 | Layer | int | Returnオブジェクトが所属するオブジェクトレイヤー番号。初期値はPickupレイヤーを示す13 |
 | Audio Source | `AudioSource` | Return時に再生する音源。無指定の場合は再生しない |
 | Audio Clip | `AudioClip` | Return時に再生するオーディオクリップ。無指定の場合は `Audio Source` に指定された `AudioClip` を再生する |
-| Execute Custom Event | bool | 各Returnオブジェクト、および `External Objects` にて指定されたオブジェクトの `UdonBehaviour` に対し、カスタムメソッドをグローバル実行するかどうか |
-| External Objects | `GameObject[]` | Returnオブジェクト以外を対象として、SpawnObject実行時に実行したいカスタムメソッドが所属するオブジェクト、またはその親オブジェクト |
-
-カスタムメソッドを使いたい場合、 `Custom Event Names` にあるメソッドをコピペしてご利用ください。
 
 ### Reset Switch
 

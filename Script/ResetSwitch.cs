@@ -2,8 +2,11 @@
 using UdonSharp;
 using UnityEngine;
 
-namespace PurabeWorks
+namespace PurabeWorks.SpawnObject
 {
+    /// <summary>
+    /// リセットボタン
+    /// </summary>
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ResetSwitch : UdonSharpBehaviour
     {

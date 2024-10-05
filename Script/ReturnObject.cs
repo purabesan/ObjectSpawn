@@ -1,32 +1,22 @@
 ﻿
 using UdonSharp;
 using UnityEngine;
-using VRC.SDKBase;
 using VRC.SDK3.Components;
-using VRC.Udon;
 
-namespace PurabeWorks
+namespace PurabeWorks.SpawnObject
 {
+    /// <summary>
+    /// Return処理
+    /// </summary>
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-    public class ReturnObject : UdonSharpBehaviour
+    public class ReturnObject : CommonSpawnObject
     {
         [Header("VRC Object Poolオブジェクトまたは親")]
         public GameObject[] pools;
         [SerializeField, Header("VRC Object Poolオブジェクトまたは親の参照先")]
         private ReturnObject _reference;
-        [Header("リターン対象レイヤー")]
+        [Header("リターン対象レイヤー"), Tooltip("13: Pickup")]
         public int layer = 13;
-        [SerializeField, Header("リターン時に再生するオーディオ")]
-        private AudioSource _audioSource = null;
-        [SerializeField, Header("再生SE")]
-        private AudioClip _audioClip = null;
-        [SerializeField, Header("カスタムメソッドを実行するか")]
-        private bool _executeCustomEvent = false;
-        [SerializeField, Header("リターン対象以外のカスタムメソッド実行先")]
-        private GameObject[] _externalObjects;
-        [SerializeField, Header("カスタムメソッド(コピペ用)")]
-        [TextArea]
-        public string CustomEventNames = "public void Pura_OnReturn(){}";
 
         private GameObject[] poolsRef;
         private void Start()
@@ -47,7 +37,9 @@ namespace PurabeWorks
             ReturnProcess(other.gameObject);
         }
 
-
+        /// <summary>
+        /// 全リセット実行(外部呼出用)
+        /// </summary>
         public void ResetAll()
         {
             // すべて返却する
@@ -55,6 +47,10 @@ namespace PurabeWorks
             ResetAllPerArray(poolsRef);
         }
 
+        /// <summary>
+        /// 配列ごとに全リセットを実行
+        /// </summary>
+        /// <param name="targetPoolgs">Pool配列</param>
         private void ResetAllPerArray(GameObject[] targetPoolgs)
         {
             // 参照先のプールオブジェクト配列ごとの処理
@@ -84,12 +80,16 @@ namespace PurabeWorks
             }
         }
 
+        /// <summary>
+        /// Poolごとに全リセットを実行
+        /// </summary>
+        /// <param name="pool">Pool</param>
         private void ResetAllPerPool(VRCObjectPool pool)
         {
             /* VRC Object Poolに登録された
              * 全オブジェクトにReturn実行 */
 
-            foreach(GameObject target in pool.Pool)
+            foreach (GameObject target in pool.Pool)
             {
                 if (!target.activeInHierarchy)
                 {
@@ -102,17 +102,24 @@ namespace PurabeWorks
                 // Drop処理
                 DropObject(target);
                 // Return実行
+                SetOwner(pool.gameObject);
                 pool.Return(target);
             }
         }
 
+        /// <summary>
+        /// 親子関係チェック
+        /// </summary>
+        /// <param name="parent">親オブジェクト</param>
+        /// <param name="child">子オブジェクト</param>
+        /// <returns>親子 true/親子ではない false</returns>
         private bool HasGameObject(GameObject[] parent, GameObject child)
         {
-            if (parent == null)
+            if (parent == null || child == null)
             {
                 return false;
             }
-            foreach(GameObject c in parent)
+            foreach (GameObject c in parent)
             {
                 if (child == c)
                 {
@@ -122,6 +129,10 @@ namespace PurabeWorks
             return false;
         }
 
+        /// <summary>
+        /// Return処理
+        /// </summary>
+        /// <param name="target">対象オブジェクト</param>
         private void ReturnProcess(GameObject target)
         {
             if (target != null && target.activeInHierarchy
@@ -161,15 +172,22 @@ namespace PurabeWorks
             }
         }
 
+        /// <summary>
+        /// Return処理のサブ関数
+        /// </summary>
+        /// <param name="target">Return対象</param>
+        /// <param name="g">PoolまたはPoolの親オブジェクト</param>
         private void ReturnProcessSub(GameObject target, GameObject g)
         {
             VRCObjectPool pool = (VRCObjectPool)g.GetComponent(typeof(VRCObjectPool));
             if (pool != null)
             {
+                SetOwner(pool.gameObject);
                 pool.Return(target);
                 if (!target.activeInHierarchy)
                 {
-                    DoWhenReturned(target);
+                    // SE再生
+                    PlayAudio();
                     return;
                 }
             }
@@ -178,89 +196,23 @@ namespace PurabeWorks
             foreach (Component x in pools)
             {
                 VRCObjectPool p2 = (VRCObjectPool)x;
+                SetOwner(p2.gameObject);
                 p2.Return(target);
                 if (!target.activeInHierarchy)
                 {
-                    DoWhenReturned(target);
+                    // SE再生
+                    PlayAudio();
                     return;
                 }
             }
         }
 
-        private void DoWhenReturned(GameObject obj)
-        {
-            // カスタムメソッド対応
-            if (_executeCustomEvent)
-            {
-                //カスタムメソッドを全Udon Behaviourで発火する
-                Component[] udons = obj.GetComponents(typeof(UdonBehaviour));
-                foreach (Component c in udons)
-                {
-                    DoWhenReturnedSub((UdonBehaviour)c);
-                }
-                udons = obj.GetComponentsInChildren(typeof(UdonBehaviour));
-                foreach (Component c in udons)
-                {
-                    DoWhenReturnedSub((UdonBehaviour)c);
-                }
-
-                //外部オブジェクトでの実行
-                if (_externalObjects.Length > 0)
-                {
-                    foreach (GameObject e in _externalObjects)
-                    {
-                        if (e == null)
-                        {
-                            continue;
-                        }
-                        
-                        udons = e.GetComponents(typeof(UdonBehaviour));
-                        foreach(Component c in udons)
-                        {
-                            DoWhenReturnedSub((UdonBehaviour)c);
-                        }
-                        udons = e.GetComponentsInChildren(typeof(UdonBehaviour));
-                        foreach (Component c in udons)
-                        {
-                            DoWhenReturnedSub((UdonBehaviour)c);
-                        }
-                    }
-                }
-            }
-
-            //リターンSE再生
-            if (_audioSource != null && (_audioClip != null || _audioSource.clip != null))
-            {
-                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(PlayAudio));
-            }
-        }
-
-        private void DoWhenReturnedSub(UdonBehaviour udon)
-        {
-            udon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Pura_OnReturn");
-        }
-
-        private void SetOwner(GameObject obj)
-        {
-            if (!Networking.IsOwner(obj))
-            {
-                Networking.SetOwner(Networking.LocalPlayer, obj);
-            }
-        }
-
-        public void PlayAudio()
-        {
-            if(_audioClip == null && _audioSource.clip != null)
-            {
-                _audioSource.PlayOneShot(_audioSource.clip);
-            } else if(_audioSource != null) {
-                _audioSource.PlayOneShot(_audioClip);
-            }
-        }
-
+        /// <summary>
+        /// Drop処理
+        /// </summary>
+        /// <param name="target">対象オブジェクト</param>
         private void DropObject(GameObject target)
         {
-            // Drop処理
             VRCPickup pickup = (VRCPickup)target.GetComponent(typeof(VRCPickup));
             if (pickup != null)
             {

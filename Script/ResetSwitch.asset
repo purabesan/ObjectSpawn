@@ -21,7 +21,7 @@ MonoBehaviour:
   compiledVersion: 2
   behaviourSyncMode: 4
   hasInteractEvent: 1
-  scriptID: 5415128362716361916
+  scriptID: 282374142138789415
   serializationData:
     SerializedFormat: 2
     SerializedBytes: 
@@ -62,7 +62,7 @@ MonoBehaviour:
       Data: 3|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: PurabeWorks.ReturnObject, Assembly-CSharp
+      Data: PurabeWorks.SpawnObject.ReturnObject, Assembly-CSharp
     - Name: 
       Entry: 8
       Data: 
