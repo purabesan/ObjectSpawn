@@ -29,7 +29,10 @@ namespace PurabeWorks.SpawnObject
             {
                 Debug.Log("[purabe]VRC Object Poolを登録してください。");
             }
+        }
 
+        private void OnEnable()
+        {
             if (_randomSpawn)
             {
                 //スポーン順序をシャッフル
@@ -67,7 +70,7 @@ namespace PurabeWorks.SpawnObject
                 return;
             }
 
-            // このスクリプトを実行しているプレイヤーが「オーナ」でなければ「オーナ」にする
+            // Object Pool のオーナ権限取得
             SetOwner(_vRCObjectPool.gameObject);
             // オブジェクトプールの配列頭のオブジェクトをスポーン
             GameObject spawnedObject = _vRCObjectPool.TryToSpawn();
@@ -78,7 +81,7 @@ namespace PurabeWorks.SpawnObject
                 return;
             }
 
-            // オーナ権限取得
+            // Spawn したアイテムのオーナ権限取得
             SetOwner(spawnedObject);
 
             // 手元に移動させる
@@ -116,7 +119,5 @@ namespace PurabeWorks.SpawnObject
 
             return Vector3.Distance(transform.position, rightHandPos) <= Vector3.Distance(transform.position, leftHandPos);
         }
-
-
     }
 }

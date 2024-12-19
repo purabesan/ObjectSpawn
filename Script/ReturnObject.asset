@@ -98,7 +98,7 @@ MonoBehaviour:
       Data: 6|UnityEngine.HeaderAttribute, UnityEngine.CoreModule
     - Name: header
       Entry: 1
-      Data: "SE\uFFFD\u0309\uFFFD\uFFFD\uFFFD"
+      Data: "SE\u306E\u97F3\u6E90"
     - Name: 
       Entry: 8
       Data: 
@@ -167,7 +167,7 @@ MonoBehaviour:
       Data: 11|UnityEngine.HeaderAttribute, UnityEngine.CoreModule
     - Name: header
       Entry: 1
-      Data: "SE\uFFFD\u0303N\uFFFD\uFFFD\uFFFDb\uFFFDv"
+      Data: "SE\u306E\u30AF\u30EA\u30C3\u30D7"
     - Name: 
       Entry: 8
       Data: 
