@@ -61,20 +61,13 @@ namespace PurabeWorks.SpawnObject
 
             foreach (GameObject pg in targetPoolgs)
             {
-                // poolオブジェクトそのものの場合
-                VRCObjectPool pool = (VRCObjectPool)pg.GetComponent(typeof(VRCObjectPool));
-                if (pool != null)
+                // 子も含めて Pool を取り出して処理
+                VRCObjectPool[] poolsLocal = pg.GetComponentsInChildren<VRCObjectPool>(true);
+                if (poolsLocal.Length > 0)
                 {
-                    ResetAllPerPool(pool);
-                }
-
-                // poolオブジェクトの親
-                Component[] poolcs = pg.GetComponentsInChildren(typeof(VRCObjectPool));
-                if (poolcs.Length > 0)
-                {
-                    foreach (Component p in poolcs)
+                    foreach (VRCObjectPool p in poolsLocal)
                     {
-                        ResetAllPerPool((VRCObjectPool)p);
+                        ResetAllPerPool(p);
                     }
                 }
             }
@@ -86,14 +79,17 @@ namespace PurabeWorks.SpawnObject
         /// <param name="pool">Pool</param>
         private void ResetAllPerPool(VRCObjectPool pool)
         {
-            /* VRC Object Poolに登録された
-             * 全オブジェクトにReturn実行 */
+            if (pool == null) return;
 
+            // オーナ権限取得
+            SetOwner(pool.gameObject);
+
+            // Pool 内の全オブジェクトに対して Return 処理
             foreach (GameObject target in pool.Pool)
             {
-                if (!target.activeInHierarchy)
+                if (target == null || !target.activeInHierarchy)
                 {
-                    // 非表示ならば何もしない
+                    // null of 非表示ならば何もしない
                     continue;
                 }
 
@@ -138,10 +134,11 @@ namespace PurabeWorks.SpawnObject
             if (target != null && target.activeInHierarchy
                 && target.layer == layer)
             {
-                // オーナ権限取得
+                // 対象オブジェクトのオーナ権限取得
                 SetOwner(target);
                 // Drop処理
                 DropObject(target);
+
                 // すべてのVRC Object Poolに対してアイテムReturnを実行
                 foreach (GameObject p in pools)
                 {
@@ -151,10 +148,12 @@ namespace PurabeWorks.SpawnObject
                         return;
                     }
                 }
+
                 if (poolsRef == null)
                 {
                     return;
                 }
+
                 foreach (GameObject p in poolsRef)
                 {
                     // 直下のpoolと重複ならスキップ
@@ -179,29 +178,19 @@ namespace PurabeWorks.SpawnObject
         /// <param name="g">PoolまたはPoolの親オブジェクト</param>
         private void ReturnProcessSub(GameObject target, GameObject g)
         {
-            VRCObjectPool pool = (VRCObjectPool)g.GetComponent(typeof(VRCObjectPool));
-            if (pool != null)
-            {
-                SetOwner(pool.gameObject);
-                pool.Return(target);
-                if (!target.activeInHierarchy)
-                {
-                    // SE再生
-                    PlayAudio();
-                    return;
-                }
-            }
+            VRCObjectPool[] poolsLocal = g.GetComponentsInChildren<VRCObjectPool>(true);
 
-            Component[] pools = g.GetComponentsInChildren(typeof(VRCObjectPool));
-            foreach (Component x in pools)
+            foreach (VRCObjectPool p in poolsLocal)
             {
-                VRCObjectPool p2 = (VRCObjectPool)x;
-                SetOwner(p2.gameObject);
-                p2.Return(target);
+                // Poolのオーナ権限取得
+                SetOwner(p.gameObject);
+                // リターン実行
+                p.Return(target);
                 if (!target.activeInHierarchy)
                 {
                     // SE再生
                     PlayAudio();
+                    // 終了
                     return;
                 }
             }
@@ -213,7 +202,8 @@ namespace PurabeWorks.SpawnObject
         /// <param name="target">対象オブジェクト</param>
         private void DropObject(GameObject target)
         {
-            VRCPickup pickup = (VRCPickup)target.GetComponent(typeof(VRCPickup));
+            VRCPickup pickup = target.GetComponent<VRCPickup>();
+
             if (pickup != null)
             {
                 pickup.Drop();

@@ -20,7 +20,6 @@ namespace PurabeWorks.SpawnObject
         [SerializeField, Header("オブジェクトの出現先"), Tooltip("未指定の場合はPoolの位置に出現")]
         private Transform _spawnPoint;
 
-
         private VRCPlayerApi localPlayer;
 
         private void Start()
@@ -53,6 +52,8 @@ namespace PurabeWorks.SpawnObject
         {
             foreach (GameObject item in _vRCObjectPool.Pool)
             {
+                if (item == null) continue;
+
                 if (!item.activeInHierarchy)
                 {
                     return false;
@@ -63,6 +64,9 @@ namespace PurabeWorks.SpawnObject
 
         public override void Interact()
         {
+            // スイッチのオーナ権限取得
+            SetOwner(this.gameObject);
+
             // オブジェクトが全てactiveなら操作しない
             if (AllActive())
             {
@@ -96,7 +100,7 @@ namespace PurabeWorks.SpawnObject
                     spawnedObject.transform.position = localPlayer.GetBonePosition(HumanBodyBones.LeftHand);
                 }
             }
-            else if (_spawnPoint)
+            else if (_spawnPoint != null)
             {
                 // 出現ポイントを指定されている場合
                 spawnedObject.transform.SetPositionAndRotation(_spawnPoint.position, _spawnPoint.rotation);

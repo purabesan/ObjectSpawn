@@ -29,9 +29,10 @@ namespace PurabeWorks.SpawnObject
         /// <summary>
         /// オーディオ再生(外部呼出用)
         /// </summary>
-        public void PlayAudio()
+        protected void PlayAudio()
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All,
+            SendCustomNetworkEvent(
+                VRC.Udon.Common.Interfaces.NetworkEventTarget.All,
                 nameof(PlayAudioSub));
         }
 
