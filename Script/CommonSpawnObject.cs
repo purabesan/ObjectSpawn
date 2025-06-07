@@ -16,13 +16,17 @@ namespace PurabeWorks.SpawnObject
         /// </summary>
         public void PlayAudioSub()
         {
-            if (_audioClip == null && _audioSource.clip != null)
+            if (_audioSource != null)
             {
-                _audioSource.PlayOneShot(_audioSource.clip);
-            }
-            else if (_audioSource != null)
-            {
-                _audioSource.PlayOneShot(_audioClip);
+                if (_audioClip != null)
+                {
+                    // audioClip 設定を優先
+                    _audioSource.PlayOneShot(_audioClip);
+                }
+                else if (_audioSource.clip != null)
+                {
+                    _audioSource.PlayOneShot(_audioSource.clip);
+                }
             }
         }
 
