@@ -12,30 +12,32 @@ namespace PurabeWorks.SpawnObject
     public class SpawnObject : CommonSpawnObject
     {
         [SerializeField, Header("スポーン対象のVRC Object Pool")]
-        private VRCObjectPool _vRCObjectPool;
+        protected VRCObjectPool vRCObjectPool;
         [SerializeField, Header("ランダムスポーンをするかどうか")]
-        private bool _randomSpawn = false;
+        protected bool randomSpawn = false;
         [SerializeField, Header("スポーンアイテムを手元に移動するか")]
-        private bool _moveItemToHand = false;
+        protected bool moveItemToHand = false;
         [SerializeField, Header("オブジェクトの出現先"), Tooltip("未指定の場合はPoolの位置に出現")]
-        private Transform _spawnPoint;
+        protected Transform spawnPoint;
+        [SerializeField, Header("Spawn Delay"), Tooltip("うまく動かない場合の調整用")]
+        protected int spawnDelayFrames = 3;
 
-        private VRCPlayerApi localPlayer;
+        protected VRCPlayerApi localPlayer;
 
-        private void Start()
+        protected void Start()
         {
-            if (_vRCObjectPool == null)
+            if (vRCObjectPool == null)
             {
                 Debug.Log("[purabe]VRC Object Poolを登録してください。");
             }
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
-            if (_randomSpawn)
+            if (randomSpawn)
             {
                 //スポーン順序をシャッフル
-                _vRCObjectPool.Shuffle();
+                vRCObjectPool.Shuffle();
             }
 
             if (Networking.LocalPlayer != null)
@@ -44,13 +46,126 @@ namespace PurabeWorks.SpawnObject
             }
         }
 
+        public override void Interact()
+        {
+            Spawn();
+        }
+
+        /// <summary>
+        /// スポーン処理
+        /// </summary>
+        protected virtual void Spawn()
+        {
+            // スイッチのオーナ権限取得
+            GetOwner(this.gameObject);
+
+            // オブジェクトが全てactiveなら操作しない
+            if (AllActive())
+            {
+                Debug.Log("[purabe]スポーンできるオブジェクトがありません。");
+                return;
+            }
+
+            // Object Pool のオーナ権限取得
+            GetOwner(vRCObjectPool.gameObject);
+            // オブジェクトプールの配列頭のオブジェクトをスポーン
+            GameObject spawnedObject = vRCObjectPool.TryToSpawn();
+
+            if (spawnedObject == null)
+            {
+                Debug.Log("[purabe]スポーンできるオブジェクトがありません。");
+                return;
+            }
+
+            // Spawn したアイテムのオーナ権限取得
+            GetOwner(spawnedObject);
+
+            // 指定パラメータに従い移動
+            MoveToTarget(spawnedObject);
+
+            // SE再生
+            PlayAudio();
+        }
+
+        /// <summary>
+        /// スポーンオブジェクトを指定パラメータに従い移動させる
+        /// </summary>
+        protected void MoveToTarget(GameObject target)
+        {
+            if (!moveItemToHand && spawnPoint == null)
+            {
+                moveTargetGo = null;
+                return;
+            }
+
+            moveTargetGo = target;
+
+            if (moveItemToHand)
+            {
+                // 手元に移動させる場合
+                if (IsNearToRightHand())
+                {
+                    toPos = localPlayer.GetBonePosition(HumanBodyBones.RightHand);
+                    toRot = Quaternion.identity;
+                }
+                else
+                {
+                    toPos = localPlayer.GetBonePosition(HumanBodyBones.LeftHand);
+                    toRot = Quaternion.identity;
+                }
+            }
+            else if (spawnPoint != null)
+            {
+                // 出現ポイントを指定されている場合
+                toPos = spawnPoint.position;
+                toRot = spawnPoint.rotation;
+            }
+
+            // 遅延移動呼出
+            SendCustomEventDelayedFrames(nameof(MoveToTargetDelayed), spawnDelayFrames);
+        }
+
+        protected GameObject moveTargetGo;
+        protected Vector3 toPos;
+        protected Quaternion toRot;
+
+        /// <summary>
+        /// 移動実施
+        /// </summary>
+        public void MoveToTargetDelayed()
+        {
+            if (moveTargetGo == null) return;
+
+            Rigidbody rd = moveTargetGo.GetComponent<Rigidbody>();
+            VRCObjectSync sync = moveTargetGo.GetComponent<VRCObjectSync>();
+
+            if (rd != null)
+            {
+                rd.Sleep();
+            }
+
+            if (sync != null && !moveItemToHand
+                && spawnPoint != null)
+            {
+                // VRCObjectSyncで移動
+                sync.FlagDiscontinuity();
+                sync.TeleportTo(spawnPoint);
+            }
+
+            // transform 移動 (VRCObjectSyncがあっても実施)
+            moveTargetGo.transform.SetPositionAndRotation(toPos, toRot);
+
+            // 参照クリア
+            moveTargetGo = null;
+        }
+
         /// <summary>
         /// すべてのオブジェクトが出現済みかどうか
         /// </summary>
         /// <returns>true:出現済み false:未</returns>
-        private bool AllActive()
+        protected bool AllActive()
         {
-            foreach (GameObject item in _vRCObjectPool.Pool)
+            foreach (GameObject item in vRCObjectPool.Pool)
             {
                 if (item == null) continue;
 
@@ -62,61 +177,11 @@ namespace PurabeWorks.SpawnObject
             return true;
         }
 
-        public override void Interact()
-        {
-            // スイッチのオーナ権限取得
-            SetOwner(this.gameObject);
-
-            // オブジェクトが全てactiveなら操作しない
-            if (AllActive())
-            {
-                Debug.Log("[purabe]スポーンできるオブジェクトがありません。");
-                return;
-            }
-
-            // Object Pool のオーナ権限取得
-            SetOwner(_vRCObjectPool.gameObject);
-            // オブジェクトプールの配列頭のオブジェクトをスポーン
-            GameObject spawnedObject = _vRCObjectPool.TryToSpawn();
-
-            if (spawnedObject == null)
-            {
-                Debug.Log("[purabe]スポーンできるオブジェクトがありません。");
-                return;
-            }
-
-            // Spawn したアイテムのオーナ権限取得
-            SetOwner(spawnedObject);
-
-            // 手元に移動させる
-            if (_moveItemToHand)
-            {
-                if (IsNearToRightHand())
-                {
-                    spawnedObject.transform.position = localPlayer.GetBonePosition(HumanBodyBones.RightHand);
-                }
-                else
-                {
-                    spawnedObject.transform.position = localPlayer.GetBonePosition(HumanBodyBones.LeftHand);
-                }
-            }
-            else if (_spawnPoint != null)
-            {
-                // 出現ポイントを指定されている場合
-                spawnedObject.transform.SetPositionAndRotation(_spawnPoint.position, _spawnPoint.rotation);
-            }
-
-            // SE再生
-            PlayAudio();
-        }
-
-
-
         /// <summary>
         /// 右手の方が距離が近いかどうか
         /// </summary>
         /// <returns>true:近い false:遠い</returns>
-        private bool IsNearToRightHand()
+        protected bool IsNearToRightHand()
         {
             Vector3 rightHandPos = localPlayer.GetBonePosition(HumanBodyBones.RightHand);
             Vector3 leftHandPos = localPlayer.GetBonePosition(HumanBodyBones.LeftHand);

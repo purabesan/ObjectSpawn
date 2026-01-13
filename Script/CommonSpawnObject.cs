@@ -44,8 +44,9 @@ namespace PurabeWorks.SpawnObject
         /// オーナー権限獲得
         /// </summary>
         /// <param name="obj">対象オブジェクト</param>
-        protected void SetOwner(GameObject obj)
+        protected void GetOwner(GameObject obj)
         {
+            if (!Utilities.IsValid(Networking.LocalPlayer)) { SendCustomEventDelayedFrames(nameof(GetOwner), 1); return; }
             if (!Networking.IsOwner(obj))
             {
                 Networking.SetOwner(Networking.LocalPlayer, obj);

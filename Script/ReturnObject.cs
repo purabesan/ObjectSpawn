@@ -14,21 +14,21 @@ namespace PurabeWorks.SpawnObject
         [Header("VRC Object Poolオブジェクトまたは親")]
         public GameObject[] pools;
         [SerializeField, Header("VRC Object Poolオブジェクトまたは親の参照先")]
-        private ReturnObject _reference;
+        protected ReturnObject reference;
         [Header("リターン対象レイヤー"), Tooltip("13: Pickup")]
         public int layer = 13;
 
-        private GameObject[] poolsRef;
-        private void Start()
+        protected GameObject[] poolsRef;
+        protected void Start()
         {
-            if (pools.Length <= 0 && _reference == null)
+            if (pools.Length <= 0 && reference == null)
             {
                 Debug.Log("[purabe]poolsを定義しない場合はreferenceを登録してください");
             }
 
-            if (_reference != null)
+            if (reference != null)
             {
-                poolsRef = _reference.pools;
+                poolsRef = reference.pools;
             }
         }
 
@@ -82,7 +82,7 @@ namespace PurabeWorks.SpawnObject
             if (pool == null) return;
 
             // オーナ権限取得
-            SetOwner(pool.gameObject);
+            GetOwner(pool.gameObject);
 
             // Pool 内の全オブジェクトに対して Return 処理
             foreach (GameObject target in pool.Pool)
@@ -94,11 +94,11 @@ namespace PurabeWorks.SpawnObject
                 }
 
                 // オーナ権限取得
-                SetOwner(target);
+                GetOwner(target);
                 // Drop処理
                 DropObject(target);
                 // Return実行
-                SetOwner(pool.gameObject);
+                GetOwner(pool.gameObject);
                 pool.Return(target);
             }
         }
@@ -109,7 +109,7 @@ namespace PurabeWorks.SpawnObject
         /// <param name="parent">親オブジェクト</param>
         /// <param name="child">子オブジェクト</param>
         /// <returns>親子 true/親子ではない false</returns>
-        private bool HasGameObject(GameObject[] parent, GameObject child)
+        protected bool HasGameObject(GameObject[] parent, GameObject child)
         {
             if (parent == null || child == null)
             {
@@ -129,46 +129,47 @@ namespace PurabeWorks.SpawnObject
         /// Return処理
         /// </summary>
         /// <param name="target">対象オブジェクト</param>
-        private void ReturnProcess(GameObject target)
+        protected virtual void ReturnProcess(GameObject target)
         {
             if (target != null && target.activeInHierarchy
                 && target.layer == layer)
             {
                 // 対象オブジェクトのオーナ権限取得
-                SetOwner(target);
+                GetOwner(target);
                 // Drop処理
                 DropObject(target);
 
                 // すべてのVRC Object Poolに対してアイテムReturnを実行
-                foreach (GameObject p in pools)
-                {
-                    ReturnProcessSub(target, p);
-                    if (!target.activeInHierarchy)
-                    {
-                        return;
-                    }
-                }
-
-                if (poolsRef == null)
-                {
-                    return;
-                }
-
-                foreach (GameObject p in poolsRef)
-                {
-                    // 直下のpoolと重複ならスキップ
-                    if (HasGameObject(pools, p))
-                    {
-                        continue;
-                    }
-                    // リターン処理
-                    ReturnProcessSub(target, p);
-                    if (!target.activeInHierarchy)
-                    {
-                        return;
-                    }
-                }
+                if (ProcessPools(target, pools)) return;
+                if (poolsRef == null) return;
+                if (ProcessPoolsWithRef(target, pools, poolsRef)) return;
             }
+        }
+
+        // poolsのReturnProcessSub処理
+        protected bool ProcessPools(GameObject obj, GameObject[] poolArray)
+        {
+            foreach (GameObject p in poolArray)
+            {
+                ReturnProcessSub(obj, p);
+                if (!obj.activeInHierarchy)
+                    return true;
+            }
+            return false;
+        }
+
+        // poolsRefのReturnProcessSub処理（重複除外）
+        protected bool ProcessPoolsWithRef(GameObject obj, GameObject[] pools, GameObject[] poolsRef)
+        {
+            foreach (GameObject p in poolsRef)
+            {
+                if (HasGameObject(pools, p))
+                    continue;
+                ReturnProcessSub(obj, p);
+                if (!obj.activeInHierarchy)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -183,7 +184,7 @@ namespace PurabeWorks.SpawnObject
             foreach (VRCObjectPool p in poolsLocal)
             {
                 // Poolのオーナ権限取得
-                SetOwner(p.gameObject);
+                GetOwner(p.gameObject);
                 // リターン実行
                 p.Return(target);
                 if (!target.activeInHierarchy)
@@ -200,12 +201,21 @@ namespace PurabeWorks.SpawnObject
         /// Drop処理
         /// </summary>
         /// <param name="target">対象オブジェクト</param>
-        private void DropObject(GameObject target)
+        protected void DropObject(GameObject target)
         {
-            VRCPickup pickup = target.GetComponent<VRCPickup>();
+            VRCPickup[] pickups = target.GetComponentsInChildren<VRCPickup>(true);
 
-            if (pickup != null)
+            if (pickups.Length <= 0)
             {
+                return;
+            }
+
+            foreach (VRCPickup pickup in pickups)
+            {
+                if (pickup == null)
+                {
+                    continue;
+                }
                 pickup.Drop();
             }
         }

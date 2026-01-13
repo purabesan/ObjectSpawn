@@ -66,6 +66,7 @@ SpawnObjectでSpawnされたオブジェクトを、一括ですべてReturnさ�
 | Ramdom Spawn | bool | ランダムSpawn有無。チェックをつけた場合(True)、インスタンス作成時の一度だけ、Spawnの順序がランダムに変更される |
 | Move Item To Hand | bool | チェックをつけた場合(True)、Spawn実行時、Spawn対象オブジェクトの初期位置に関わらず、Spawnスイッチに近い方の手の位置にSpawnオブジェクトが出現する |
 | Spawn Point | Transform | 指定した場合、オブジェクトが指定の位置に出現します。ただし Move Item To Hand が優先です。 |
+| Spawn Delay | float | Spawn実行からオブジェクト出現までの遅延時間（秒）<br>Spawnしたアイテムの移動処理を安定化させます。 |
 | Audio Source | `AudioSource` | Spawn時に再生する音源。無指定の場合は再生しない |
 | Audio Clip | `AudioClip` | Spawn時に再生するオーディオクリップ。無指定の場合は `Audio Source` に指定された `AudioClip` を再生する |
 
