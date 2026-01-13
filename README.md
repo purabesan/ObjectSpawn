@@ -1,4 +1,5 @@
 # Object Spawn System
+
 オブジェクトをSpawnしたりReturn(Destroy)したりするギミックです。  
 VCC/U#1.0以降向け。飲食店ワールドで嵩張るPickup飲食物を、自在に取り出したり片付けたりする等に活用できます。
 
@@ -11,6 +12,11 @@ VCC/U#1.0以降向け。飲食店ワールドで嵩張るPickup飲食物を、�
 
 サンプルシーンを同梱しておりますので、まずはそちらをテストビルドし、動作をご確認ください。
 
+
+## 動作確認環境
+
+- Unity 2022.3.22f1
+- VRChat SDK - Worlds 3.10.1
 
 ## 使い方
 
@@ -85,3 +91,9 @@ SpawnObjectでSpawnされたオブジェクトを、一括ですべてReturnさ�
 | 変数名 | 型 | 説明 |
 |--------|---|------|
 | All Reseter | `ResetObject` | 一括消去するための、すべてのReturn対象オブジェクトの `VRCObjectPool` を参照するReturnObject。<br>これ専用とする場合、ResetObject側にCollider不要 |
+
+
+## ライセンス
+
+このスクリプトはMITライセンスのもとで公開されています。
+詳細は同梱の LICENSE ファイルをご覧ください。
