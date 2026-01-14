@@ -90,7 +90,7 @@ namespace PurabeWorks.SpawnObject
         /// <summary>
         /// スポーンオブジェクトを指定パラメータに従い移動させる
         /// </summary>
-        protected void MoveToTarget(GameObject target)
+        protected virtual void MoveToTarget(GameObject target)
         {
             if (!moveItemToHand && spawnPoint == null)
             {
