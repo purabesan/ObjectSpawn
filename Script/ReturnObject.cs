@@ -77,7 +77,7 @@ namespace PurabeWorks.SpawnObject
         /// Poolごとに全リセットを実行
         /// </summary>
         /// <param name="pool">Pool</param>
-        private void ResetAllPerPool(VRCObjectPool pool)
+        protected virtual void ResetAllPerPool(VRCObjectPool pool)
         {
             if (pool == null) return;
 
