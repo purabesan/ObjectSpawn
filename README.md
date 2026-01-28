@@ -18,6 +18,13 @@ VCC/U#1.0以降向け。飲食店ワールドで嵩張るPickup飲食物を、�
 - Unity 2022.3.22f1
 - VRChat SDK - Worlds 3.10.1
 
+## 注意事項
+
+`VRCObjectPool` に登録されるオブジェクトと、`ReturnObject` に重ねる `VRCPickup` オブジェクトとは、 **同一のオブジェクト** である必要があります。  
+それ以外の構造のオブジェクトを組み込みたい場合は、以下のオブジェクトスポーン拡張（有償）の利用をご検討ください。
+
+* [Object Spawn Extension / オブジェクト スポーン拡張](https://purabeworks.booth.pm/items/7874725)
+
 ## 使い方
 
 VCC/U#1.0 導入済みのワールドプロジェクトに、本unitypackageをインポートします。
