@@ -12,21 +12,28 @@ namespace PurabeWorks.SpawnObject
     public class SpawnObject : CommonSpawnObject
     {
         [SerializeField, Header("スポーン対象のVRC Object Pool")]
-        protected VRCObjectPool vRCObjectPool;
+        private VRCObjectPool vRCObjectPool;
         [SerializeField, Header("ランダムスポーンをするかどうか")]
-        protected bool randomSpawn = false;
+        private bool randomSpawn = false;
         [SerializeField, Header("スポーンアイテムを手元に移動するか")]
-        protected bool moveItemToHand = false;
+        private bool moveItemToHand = false;
         [SerializeField, Header("オブジェクトの出現先"), Tooltip("未指定の場合はPoolの位置に出現")]
-        protected Transform spawnPoint;
+        private Transform spawnPoint;
         [SerializeField, Header("Spawn Delay"), Tooltip("うまく動かない場合の調整用")]
-        protected int spawnDelayFrames = 3;
+        private int spawnDelayFrames = 3;
 
         protected VRCPlayerApi localPlayer;
 
+        /* 拡張パック対応用 */
+        protected VRCObjectPool VRCObjectPool => vRCObjectPool;
+        protected bool RandomSpawn => randomSpawn;
+        protected bool MoveItemToHand => moveItemToHand;
+        protected Transform SpawnPoint => spawnPoint;
+        protected int SpawnDelayFrames => spawnDelayFrames;
+
         protected void Start()
         {
-            if (vRCObjectPool == null)
+            if (VRCObjectPool == null)
             {
                 Debug.Log("[purabe]VRC Object Poolを登録してください。");
             }
@@ -34,10 +41,10 @@ namespace PurabeWorks.SpawnObject
 
         protected void OnEnable()
         {
-            if (randomSpawn)
+            if (RandomSpawn)
             {
                 //スポーン順序をシャッフル
-                vRCObjectPool.Shuffle();
+                VRCObjectPool.Shuffle();
             }
 
             if (Networking.LocalPlayer != null)
@@ -67,9 +74,9 @@ namespace PurabeWorks.SpawnObject
             }
 
             // Object Pool のオーナ権限取得
-            GetOwner(vRCObjectPool.gameObject);
+            GetOwner(VRCObjectPool.gameObject);
             // オブジェクトプールの配列頭のオブジェクトをスポーン
-            GameObject spawnedObject = vRCObjectPool.TryToSpawn();
+            GameObject spawnedObject = VRCObjectPool.TryToSpawn();
 
             if (spawnedObject == null)
             {
@@ -92,7 +99,7 @@ namespace PurabeWorks.SpawnObject
         /// </summary>
         protected virtual void MoveToTarget(GameObject target)
         {
-            if (!moveItemToHand && spawnPoint == null)
+            if (!MoveItemToHand && SpawnPoint == null)
             {
                 moveTargetGo = null;
                 return;
@@ -100,7 +107,7 @@ namespace PurabeWorks.SpawnObject
 
             moveTargetGo = target;
 
-            if (moveItemToHand)
+            if (MoveItemToHand)
             {
                 // 手元に移動させる場合
                 if (IsNearToRightHand())
@@ -114,15 +121,15 @@ namespace PurabeWorks.SpawnObject
                     toRot = Quaternion.identity;
                 }
             }
-            else if (spawnPoint != null)
+            else if (SpawnPoint != null)
             {
                 // 出現ポイントを指定されている場合
-                toPos = spawnPoint.position;
-                toRot = spawnPoint.rotation;
+                toPos = SpawnPoint.position;
+                toRot = SpawnPoint.rotation;
             }
 
             // 遅延移動呼出
-            SendCustomEventDelayedFrames(nameof(MoveToTargetDelayed), spawnDelayFrames);
+            SendCustomEventDelayedFrames(nameof(MoveToTargetDelayed), SpawnDelayFrames);
         }
 
         protected GameObject moveTargetGo;
@@ -144,12 +151,12 @@ namespace PurabeWorks.SpawnObject
                 rd.Sleep();
             }
 
-            if (sync != null && !moveItemToHand
-                && spawnPoint != null)
+            if (sync != null && !MoveItemToHand
+                && SpawnPoint != null)
             {
                 // VRCObjectSyncで移動
                 sync.FlagDiscontinuity();
-                sync.TeleportTo(spawnPoint);
+                sync.TeleportTo(SpawnPoint);
             }
 
             // transform 移動 (VRCObjectSyncがあっても実施)
@@ -165,7 +172,7 @@ namespace PurabeWorks.SpawnObject
         /// <returns>true:出現済み false:未</returns>
         protected bool AllActive()
         {
-            foreach (GameObject item in vRCObjectPool.Pool)
+            foreach (GameObject item in VRCObjectPool.Pool)
             {
                 if (item == null) continue;
 

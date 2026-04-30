@@ -14,21 +14,24 @@ namespace PurabeWorks.SpawnObject
         [Header("VRC Object Poolオブジェクトまたは親")]
         public GameObject[] pools;
         [SerializeField, Header("VRC Object Poolオブジェクトまたは親の参照先")]
-        protected ReturnObject reference;
+        private ReturnObject reference;
         [Header("リターン対象レイヤー"), Tooltip("13: Pickup")]
         public int layer = 13;
 
         protected GameObject[] poolsRef;
+
+        protected ReturnObject Reference => reference;
+
         protected void Start()
         {
-            if (pools.Length <= 0 && reference == null)
+            if (pools.Length <= 0 && Reference == null)
             {
                 Debug.Log("[purabe]poolsを定義しない場合はreferenceを登録してください");
             }
 
-            if (reference != null)
+            if (Reference != null)
             {
-                poolsRef = reference.pools;
+                poolsRef = Reference.pools;
             }
         }
 
