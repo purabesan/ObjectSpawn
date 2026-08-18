@@ -1,4 +1,6 @@
-﻿using UdonSharp;
+﻿// Copyright (c) 2026 Purabe Works
+// Released under the MIT License. See LICENSE.txt for details.
+using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 
@@ -46,10 +48,14 @@ namespace PurabeWorks.SpawnObject
         /// <param name="obj">対象オブジェクト</param>
         protected void GetOwner(GameObject obj)
         {
-            if (!Utilities.IsValid(Networking.LocalPlayer)) { SendCustomEventDelayedFrames(nameof(GetOwner), 1); return; }
+            if (obj == null) return;
+
+            VRCPlayerApi localPlayer = Networking.LocalPlayer;
+            if (!Utilities.IsValid(localPlayer)) return;
+
             if (!Networking.IsOwner(obj))
             {
-                Networking.SetOwner(Networking.LocalPlayer, obj);
+                Networking.SetOwner(localPlayer, obj);
             }
         }
     }

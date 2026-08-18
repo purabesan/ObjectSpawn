@@ -1,6 +1,8 @@
-﻿
+﻿// Copyright (c) 2026 Purabe Works
+// Released under the MIT License. See LICENSE.txt for details.
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Serialization;
 using VRC.SDK3.Components;
 
 namespace PurabeWorks.SpawnObject
@@ -14,6 +16,7 @@ namespace PurabeWorks.SpawnObject
         [Header("VRC Object Poolオブジェクトまたは親")]
         public GameObject[] pools;
         [SerializeField, Header("VRC Object Poolオブジェクトまたは親の参照先")]
+        [FormerlySerializedAs("_reference")]
         private ReturnObject reference;
         [Header("リターン対象レイヤー"), Tooltip("13: Pickup")]
         public int layer = 13;
@@ -22,11 +25,14 @@ namespace PurabeWorks.SpawnObject
 
         protected ReturnObject Reference => reference;
 
+        /// <summary>
+        /// Return対象のPool参照を初期化する。
+        /// </summary>
         protected void Start()
         {
-            if (pools.Length <= 0 && Reference == null)
+            if ((pools == null || pools.Length <= 0) && Reference == null)
             {
-                Debug.Log("[purabe]poolsを定義しない場合はreferenceを登録してください");
+                Debug.LogError("[purabe]poolsを定義しない場合はreferenceを登録してください");
             }
 
             if (Reference != null)
@@ -35,8 +41,13 @@ namespace PurabeWorks.SpawnObject
             }
         }
 
+        /// <summary>
+        /// トリガーに入ったオブジェクトのReturn処理を実行する。
+        /// </summary>
+        /// <param name="other">トリガーに入ったCollider</param>
         public void OnTriggerEnter(Collider other)
         {
+            if (other == null) return;
             ReturnProcess(other.gameObject);
         }
 
@@ -64,6 +75,8 @@ namespace PurabeWorks.SpawnObject
 
             foreach (GameObject pg in targetPoolgs)
             {
+                if (pg == null) continue;
+
                 // 子も含めて Pool を取り出して処理
                 VRCObjectPool[] poolsLocal = pg.GetComponentsInChildren<VRCObjectPool>(true);
                 if (poolsLocal.Length > 0)
@@ -85,24 +98,26 @@ namespace PurabeWorks.SpawnObject
             if (pool == null) return;
 
             // オーナ権限取得
-            GetOwner(pool.gameObject);
+            PreparePoolForReturn(pool);
 
             // Pool 内の全オブジェクトに対して Return 処理
             foreach (GameObject target in pool.Pool)
             {
                 if (target == null || !target.activeInHierarchy)
                 {
-                    // null of 非表示ならば何もしない
+                    // null or 非表示ならば何もしない
                     continue;
                 }
 
                 // オーナ権限取得
-                GetOwner(target);
+                PrepareObjectForReturn(target);
                 // Drop処理
                 DropObject(target);
                 // Return実行
-                GetOwner(pool.gameObject);
+                PreparePoolForReturn(pool);
                 pool.Return(target);
+                // Return後処理
+                OnObjectReturned(target);
             }
         }
 
@@ -138,22 +153,89 @@ namespace PurabeWorks.SpawnObject
                 && target.layer == layer)
             {
                 // 対象オブジェクトのオーナ権限取得
-                GetOwner(target);
+                PrepareObjectForReturn(target);
                 // Drop処理
                 DropObject(target);
 
+                // 拡張側の構造を考慮し、実際にPoolへ返すオブジェクトを解決
+                GameObject returnTarget = ResolveReturnTarget(target);
+                if (returnTarget == null) return;
+                if (returnTarget != target)
+                {
+                    PrepareObjectForReturn(returnTarget);
+                }
+
                 // すべてのVRC Object Poolに対してアイテムReturnを実行
-                if (ProcessPools(target, pools)) return;
-                if (poolsRef == null) return;
-                if (ProcessPoolsWithRef(target, pools, poolsRef)) return;
+                if (ReturnToConfiguredPools(returnTarget))
+                {
+                    OnObjectReturned(returnTarget);
+                }
             }
         }
 
-        // poolsのReturnProcessSub処理
+        /// <summary>
+        /// 実際にPoolへ返すオブジェクトを解決する
+        /// </summary>
+        /// <param name="target">Return処理の起点となるオブジェクト。</param>
+        /// <returns>実際にPoolへ返すオブジェクト。</returns>
+        protected virtual GameObject ResolveReturnTarget(GameObject target)
+        {
+            return target;
+        }
+
+        /// <summary>
+        /// Return前の対象オブジェクト準備
+        /// </summary>
+        /// <param name="target">準備するReturn対象オブジェクト。</param>
+        protected virtual void PrepareObjectForReturn(GameObject target)
+        {
+            if (target == null) return;
+            GetOwner(target);
+        }
+
+        /// <summary>
+        /// Return前のObject Pool準備
+        /// </summary>
+        /// <param name="pool">準備するObject Pool。</param>
+        protected virtual void PreparePoolForReturn(VRCObjectPool pool)
+        {
+            if (pool == null) return;
+            GetOwner(pool.gameObject);
+        }
+
+        /// <summary>
+        /// Return成功後の拡張処理
+        /// </summary>
+        /// <param name="target">PoolへのReturnに成功したオブジェクト</param>
+        protected virtual void OnObjectReturned(GameObject target)
+        {
+        }
+
+        /// <summary>
+        /// 設定済みのPoolへ対象を返す
+        /// </summary>
+        /// <param name="target">Poolへ返すオブジェクト</param>
+        /// <returns>いずれかのPoolへReturnできた場合はtrue、それ以外はfalse</returns>
+        private bool ReturnToConfiguredPools(GameObject target)
+        {
+            if (ProcessPools(target, pools)) return true;
+            if (poolsRef == null) return false;
+            return ProcessPoolsWithRef(target, pools, poolsRef);
+        }
+
+        /// <summary>
+        /// 指定されたPool配列を順に検索し、対象のReturnを試みる。
+        /// </summary>
+        /// <param name="obj">Poolへ返すオブジェクト</param>
+        /// <param name="poolArray">検索対象のPoolまたはPoolの親オブジェクト配列</param>
+        /// <returns>対象をReturnできた場合はtrue、それ以外はfalse</returns>
         protected bool ProcessPools(GameObject obj, GameObject[] poolArray)
         {
+            if (obj == null || poolArray == null) return false;
+
             foreach (GameObject p in poolArray)
             {
+                if (p == null) continue;
                 ReturnProcessSub(obj, p);
                 if (!obj.activeInHierarchy)
                     return true;
@@ -161,11 +243,20 @@ namespace PurabeWorks.SpawnObject
             return false;
         }
 
-        // poolsRefのReturnProcessSub処理（重複除外）
+        /// <summary>
+        /// 重複するPool参照を除外しながら、参照先のPool配列から対象のReturnを試みる。
+        /// </summary>
+        /// <param name="obj">Poolへ返すオブジェクト</param>
+        /// <param name="pools">重複判定の基準となるPoolまたはPoolの親オブジェクト配列</param>
+        /// <param name="poolsRef">検索対象の参照先Pool配列</param>
+        /// <returns>対象をReturnできた場合はtrue、それ以外はfalse</returns>
         protected bool ProcessPoolsWithRef(GameObject obj, GameObject[] pools, GameObject[] poolsRef)
         {
+            if (obj == null || poolsRef == null) return false;
+
             foreach (GameObject p in poolsRef)
             {
+                if (p == null) continue;
                 if (HasGameObject(pools, p))
                     continue;
                 ReturnProcessSub(obj, p);
@@ -182,12 +273,14 @@ namespace PurabeWorks.SpawnObject
         /// <param name="g">PoolまたはPoolの親オブジェクト</param>
         private void ReturnProcessSub(GameObject target, GameObject g)
         {
+            if (target == null || g == null) return;
+
             VRCObjectPool[] poolsLocal = g.GetComponentsInChildren<VRCObjectPool>(true);
 
             foreach (VRCObjectPool p in poolsLocal)
             {
                 // Poolのオーナ権限取得
-                GetOwner(p.gameObject);
+                PreparePoolForReturn(p);
                 // リターン実行
                 p.Return(target);
                 if (!target.activeInHierarchy)
@@ -206,6 +299,8 @@ namespace PurabeWorks.SpawnObject
         /// <param name="target">対象オブジェクト</param>
         protected void DropObject(GameObject target)
         {
+            if (target == null) return;
+
             VRCPickup[] pickups = target.GetComponentsInChildren<VRCPickup>(true);
 
             if (pickups.Length <= 0)

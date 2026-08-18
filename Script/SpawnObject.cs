@@ -1,5 +1,8 @@
-﻿using UdonSharp;
+﻿// Copyright (c) 2026 Purabe Works
+// Released under the MIT License. See LICENSE.txt for details.
+using UdonSharp;
 using UnityEngine;
+using UnityEngine.Serialization;
 using VRC.SDK3.Components;
 using VRC.SDKBase;
 
@@ -12,10 +15,13 @@ namespace PurabeWorks.SpawnObject
     public class SpawnObject : CommonSpawnObject
     {
         [SerializeField, Header("スポーン対象のVRC Object Pool")]
+        [FormerlySerializedAs("_vRCObjectPool")]
         private VRCObjectPool vRCObjectPool;
         [SerializeField, Header("ランダムスポーンをするかどうか")]
+        [FormerlySerializedAs("_randomSpawn")]
         private bool randomSpawn = false;
         [SerializeField, Header("スポーンアイテムを手元に移動するか")]
+        [FormerlySerializedAs("_moveItemToHand")]
         private bool moveItemToHand = false;
         [SerializeField, Header("オブジェクトの出現先"), Tooltip("未指定の場合はPoolの位置に出現")]
         private Transform spawnPoint;
@@ -41,15 +47,15 @@ namespace PurabeWorks.SpawnObject
 
         protected void OnEnable()
         {
-            if (RandomSpawn)
-            {
-                //スポーン順序をシャッフル
-                VRCObjectPool.Shuffle();
-            }
-
             if (Networking.LocalPlayer != null)
             {
                 localPlayer = Networking.LocalPlayer;
+            }
+
+            if (RandomSpawn && VRCObjectPool != null)
+            {
+                //スポーン順序をシャッフル
+                VRCObjectPool.Shuffle();
             }
         }
 
@@ -63,6 +69,12 @@ namespace PurabeWorks.SpawnObject
         /// </summary>
         protected virtual void Spawn()
         {
+            if (VRCObjectPool == null)
+            {
+                Debug.LogError("[purabe]VRC Object Poolを登録してください。");
+                return;
+            }
+
             // スイッチのオーナ権限取得
             GetOwner(this.gameObject);
 
@@ -73,8 +85,8 @@ namespace PurabeWorks.SpawnObject
                 return;
             }
 
-            // Object Pool のオーナ権限取得
-            GetOwner(VRCObjectPool.gameObject);
+            // Object Pool のスポーン準備
+            PreparePoolForSpawn();
             // オブジェクトプールの配列頭のオブジェクトをスポーン
             GameObject spawnedObject = VRCObjectPool.TryToSpawn();
 
@@ -87,19 +99,65 @@ namespace PurabeWorks.SpawnObject
             // Spawn したアイテムのオーナ権限取得
             GetOwner(spawnedObject);
 
-            // 指定パラメータに従い移動
-            MoveToTarget(spawnedObject);
+            // 拡張側で専用の移動処理を行わない場合は、通常の移動を実行
+            if (!TryMoveSpecialObject(spawnedObject))
+            {
+                MoveToTarget(spawnedObject);
+            }
 
             // SE再生
             PlayAudio();
         }
 
         /// <summary>
+        /// Object Pool からスポーンする前の準備
+        /// </summary>
+        protected virtual void PreparePoolForSpawn()
+        {
+            GetOwner(VRCObjectPool.gameObject);
+        }
+
+        /// <summary>
+        /// 拡張パック固有の移動処理
+        /// </summary>
+        /// <param name="target">スポーンしたオブジェクト</param>
+        /// <returns>専用の移動処理を行った場合はtrue</returns>
+        protected virtual bool TryMoveSpecialObject(GameObject target)
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// 現在の設定でスポーン後の移動が必要かどうかを取得する
+        /// </summary>
+        /// <returns>移動が必要な場合はtrue、それ以外はfalse</returns>
+        protected virtual bool HasMoveDestination()
+        {
+            return MoveItemToHand || SpawnPoint != null;
+        }
+
+        /// <summary>
+        /// スポーン後の移動先Transformを解決する
+        /// </summary>
+        /// <returns>移動先Transform。移動先がない場合はnull</returns>
+        protected virtual Transform ResolveMoveDestination()
+        {
+            return SpawnPoint;
+        }
+
+        /// <summary>
         /// スポーンオブジェクトを指定パラメータに従い移動させる
         /// </summary>
+        /// <param name="target">移動するスポーン済みオブジェクト</param>
         protected virtual void MoveToTarget(GameObject target)
         {
-            if (!MoveItemToHand && SpawnPoint == null)
+            if (target == null)
+            {
+                moveTargetGo = null;
+                return;
+            }
+
+            if (!HasMoveDestination())
             {
                 moveTargetGo = null;
                 return;
@@ -109,6 +167,13 @@ namespace PurabeWorks.SpawnObject
 
             if (MoveItemToHand)
             {
+                if (!Utilities.IsValid(localPlayer))
+                {
+                    Debug.LogError("[purabe]ローカルプレイヤーを取得できないため、手元へ移動できません。");
+                    moveTargetGo = null;
+                    return;
+                }
+
                 // 手元に移動させる場合
                 if (IsNearToRightHand())
                 {
@@ -121,12 +186,27 @@ namespace PurabeWorks.SpawnObject
                     toRot = Quaternion.identity;
                 }
             }
-            else if (SpawnPoint != null)
+            else
             {
+                Transform destination = ResolveMoveDestination();
+                if (destination == null)
+                {
+                    moveTargetGo = null;
+                    return;
+                }
+
                 // 出現ポイントを指定されている場合
-                toPos = SpawnPoint.position;
-                toRot = SpawnPoint.rotation;
+                toPos = destination.position;
+                toRot = destination.rotation;
             }
+
+            if (!EnqueueMove(moveTargetGo, toPos, toRot))
+            {
+                moveTargetGo = null;
+                return;
+            }
+
+            moveTargetGo = null;
 
             // 遅延移動呼出
             SendCustomEventDelayedFrames(nameof(MoveToTargetDelayed), SpawnDelayFrames);
@@ -136,15 +216,96 @@ namespace PurabeWorks.SpawnObject
         protected Vector3 toPos;
         protected Quaternion toRot;
 
+        private GameObject[] pendingMoveTargets;
+        private Vector3[] pendingMovePositions;
+        private Quaternion[] pendingMoveRotations;
+        private int pendingMoveHead;
+        private int pendingMoveCount;
+
+        /// <summary>
+        /// 遅延移動するオブジェクトと移動先をキューに追加する
+        /// </summary>
+        /// <param name="target">移動するオブジェクト</param>
+        /// <param name="position">移動先のワールド座標</param>
+        /// <param name="rotation">移動先のワールド回転</param>
+        /// <returns>キューに追加できた場合はtrue、それ以外はfalse</returns>
+        private bool EnqueueMove(GameObject target, Vector3 position, Quaternion rotation)
+        {
+            if (target == null) return false;
+
+            EnsureMoveQueue();
+            if (pendingMoveCount >= pendingMoveTargets.Length)
+            {
+                Debug.LogError("[purabe]遅延移動キューに空きがありません。");
+                return false;
+            }
+
+            int index = (pendingMoveHead + pendingMoveCount) % pendingMoveTargets.Length;
+            pendingMoveTargets[index] = target;
+            pendingMovePositions[index] = position;
+            pendingMoveRotations[index] = rotation;
+            pendingMoveCount++;
+            return true;
+        }
+
+        /// <summary>
+        /// Object Poolのサイズに合わせて遅延移動キューを初期化する
+        /// </summary>
+        private void EnsureMoveQueue()
+        {
+            if (pendingMoveTargets != null) return;
+
+            int capacity = 1;
+            if (VRCObjectPool != null && VRCObjectPool.Pool != null
+                && VRCObjectPool.Pool.Length > 0)
+            {
+                capacity = VRCObjectPool.Pool.Length;
+            }
+
+            pendingMoveTargets = new GameObject[capacity];
+            pendingMovePositions = new Vector3[capacity];
+            pendingMoveRotations = new Quaternion[capacity];
+            pendingMoveHead = 0;
+            pendingMoveCount = 0;
+        }
+
         /// <summary>
         /// 移動実施
         /// </summary>
         public void MoveToTargetDelayed()
         {
-            if (moveTargetGo == null) return;
+            if (pendingMoveCount > 0)
+            {
+                GameObject target = pendingMoveTargets[pendingMoveHead];
+                Vector3 position = pendingMovePositions[pendingMoveHead];
+                Quaternion rotation = pendingMoveRotations[pendingMoveHead];
 
-            Rigidbody rd = moveTargetGo.GetComponent<Rigidbody>();
-            VRCObjectSync sync = moveTargetGo.GetComponent<VRCObjectSync>();
+                pendingMoveTargets[pendingMoveHead] = null;
+                pendingMoveHead = (pendingMoveHead + 1) % pendingMoveTargets.Length;
+                pendingMoveCount--;
+
+                MoveObject(target, position, rotation);
+                return;
+            }
+
+            // 従来の派生クラスから直接呼び出された場合の互換処理
+            if (moveTargetGo == null) return;
+            MoveObject(moveTargetGo, toPos, toRot);
+            moveTargetGo = null;
+        }
+
+        /// <summary>
+        /// 指定したオブジェクトを座標と回転へ移動する
+        /// </summary>
+        /// <param name="target">移動するオブジェクト</param>
+        /// <param name="position">移動先のワールド座標</param>
+        /// <param name="rotation">移動先のワールド回転</param>
+        private void MoveObject(GameObject target, Vector3 position, Quaternion rotation)
+        {
+            if (target == null) return;
+
+            Rigidbody rd = target.GetComponent<Rigidbody>();
+            VRCObjectSync sync = target.GetComponent<VRCObjectSync>();
 
             if (rd != null)
             {
@@ -160,10 +321,7 @@ namespace PurabeWorks.SpawnObject
             }
 
             // transform 移動 (VRCObjectSyncがあっても実施)
-            moveTargetGo.transform.SetPositionAndRotation(toPos, toRot);
-
-            // 参照クリア
-            moveTargetGo = null;
+            target.transform.SetPositionAndRotation(position, rotation);
         }
 
         /// <summary>
@@ -172,6 +330,8 @@ namespace PurabeWorks.SpawnObject
         /// <returns>true:出現済み false:未</returns>
         protected bool AllActive()
         {
+            if (VRCObjectPool == null) return true;
+
             foreach (GameObject item in VRCObjectPool.Pool)
             {
                 if (item == null) continue;
@@ -190,6 +350,8 @@ namespace PurabeWorks.SpawnObject
         /// <returns>true:近い false:遠い</returns>
         protected bool IsNearToRightHand()
         {
+            if (!Utilities.IsValid(localPlayer)) return false;
+
             Vector3 rightHandPos = localPlayer.GetBonePosition(HumanBodyBones.RightHand);
             Vector3 leftHandPos = localPlayer.GetBonePosition(HumanBodyBones.LeftHand);
 
