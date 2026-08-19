@@ -1,5 +1,7 @@
 # Object Spawn System
 
+ドキュメントは [こちら](https://purabesan.github.io/ObjectSpawn/)
+
 オブジェクトを Spawn したり Return(Destroy) したりするギミックです。
 VCC/U#1.0 以降向け。飲食店ワールドで嵩張る Pickup 飲食物を、自在に取り出したり片付けたりする等に活用できます。
 
