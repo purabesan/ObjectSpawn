@@ -113,6 +113,8 @@ namespace PurabeWorks.SpawnObject
                 PrepareObjectForReturn(target);
                 // Drop処理
                 DropObject(target);
+                // Return直前処理
+                BeforeObjectReturn(target);
                 // Return実行
                 PreparePoolForReturn(pool);
                 pool.Return(target);
@@ -204,6 +206,14 @@ namespace PurabeWorks.SpawnObject
         }
 
         /// <summary>
+        /// Return直前の拡張処理
+        /// </summary>
+        /// <param name="target">これからPoolへReturnするオブジェクト</param>
+        protected virtual void BeforeObjectReturn(GameObject target)
+        {
+        }
+
+        /// <summary>
         /// Return成功後の拡張処理
         /// </summary>
         /// <param name="target">PoolへのReturnに成功したオブジェクト</param>
@@ -279,8 +289,12 @@ namespace PurabeWorks.SpawnObject
 
             foreach (VRCObjectPool p in poolsLocal)
             {
+                if (!ContainsPoolObject(p, target)) continue;
+
                 // Poolのオーナ権限取得
                 PreparePoolForReturn(p);
+                // Return直前処理
+                BeforeObjectReturn(target);
                 // リターン実行
                 p.Return(target);
                 if (!target.activeInHierarchy)
@@ -291,6 +305,21 @@ namespace PurabeWorks.SpawnObject
                     return;
                 }
             }
+        }
+
+        /// <summary>
+        /// 指定したObject Poolに対象オブジェクトが登録されているか確認する
+        /// </summary>
+        private bool ContainsPoolObject(VRCObjectPool pool, GameObject target)
+        {
+            if (pool == null || pool.Pool == null || target == null) return false;
+
+            // Enumerable.Contains は Udon not exposed
+            foreach (GameObject item in pool.Pool)
+            {
+                if (item == target) return true;
+            }
+            return false;
         }
 
         /// <summary>

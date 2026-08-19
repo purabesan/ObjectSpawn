@@ -105,8 +105,19 @@ namespace PurabeWorks.SpawnObject
                 MoveToTarget(spawnedObject);
             }
 
+            // Spawn成功後の拡張処理
+            OnObjectSpawned(spawnedObject);
+
             // SE再生
             PlayAudio();
+        }
+
+        /// <summary>
+        /// Spawn成功後の拡張処理
+        /// </summary>
+        /// <param name="target">Spawnに成功したオブジェクト</param>
+        protected virtual void OnObjectSpawned(GameObject target)
+        {
         }
 
         /// <summary>
